@@ -9,7 +9,8 @@
 #define BEAST_BUFFER_CAT_HPP
 
 #include <beast/config.hpp>
-#include <beast/core/detail/type_traits.hpp>
+#include <beast/core/type_traits.hpp>
+#include <boost/mp11.hpp>
 #include <tuple>
 
 namespace beast {
@@ -32,9 +33,18 @@ public:
     */
 #if BEAST_DOXYGEN
     using value_type = implementation_defined;
-#else
+#elif BEAST_NO_MP11
     using value_type = typename
         detail::common_buffers_type<Buffers...>::type;
+#else
+    using value_type = typename std::conditional<
+        std::is_convertible<
+            std::tuple<Buffers...>,
+            boost::mp11::mp_repeat_c<
+                std::tuple<boost::asio::mutable_buffer>,
+                sizeof...(Buffers)> >::value,
+        boost::asio::mutable_buffer,
+        boost::asio::const_buffer>::type;
 #endif
 
     /// The type of iterator used by the concatenated sequence
@@ -102,9 +112,17 @@ buffer_cat_view<B1, B2, Bn...>
 buffer_cat(B1 const& b1, B2 const& b2, Bn const&... bn)
 #endif
 {
+#if BEAST_NO_MP11
     static_assert(
         detail::is_all_const_buffer_sequence<B1, B2, Bn...>::value,
             "BufferSequence requirements not met");
+#else
+    static_assert(
+        boost::mp11::mp_all_of<
+            boost::mp11::mp_list<B1, B2, Bn...>,
+            is_const_buffer_sequence>::value,
+        "BufferSequence requirements not met");
+#endif
     return buffer_cat_view<B1, B2, Bn...>{b1, b2, bn...};
 }
 
