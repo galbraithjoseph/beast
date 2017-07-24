@@ -8,30 +8,99 @@
 project beast/doc ;
 
 import boostbook : boostbook ;
+import path ;
 
 using boostbook ;
 using quickbook ;
 using doxygen ;
 
+local sources = [ path.glob-tree ../include/boost/beast : *.hpp *.ipp : detail impl ] ;
+
 #
 # HTML documentation for $(BOOST_ROOT)/doc/html
 #
 
+# Produce transform.xsl, which converts
+# the reference xml into Boost.Book.
+#
+make transform.xsl
+    :
+        docca/include/docca/doxygen.xsl
+    :
+        @make_transform
+        <dependency>xsl/config.xsl
+        <dependency>xsl/class_detail.xsl
+        <dependency>xsl/includes.xsl
+        <dependency>xsl/includes_foot.xsl
+    ;
+
+actions make_transform
+{
+    cp $(2) $(1)
+    sed -i -e "/<!-- CONFIG_TEMPLATE -->/{r xsl/config.xsl" -e "d}" $(1)
+    sed -i -e "/<!-- CLASS_DETAIL_TEMPLATE -->/{r xsl/class_detail.xsl" -e "d}" $(1)
+    sed -i -e "/<!-- INCLUDES_TEMPLATE -->/{r xsl/includes.xsl" -e "d}" $(1)
+    sed -i -e "/<!-- INCLUDES_FOOT_TEMPLATE -->/{r xsl/includes_foot.xsl" -e "d}" $(1)
+}
+
+# Produce the reference xml using Doxygen
+#
+make reference.xml
+    :
+        source.dox
+        ../include/boost/beast/core/bind_handler.hpp
+    :
+        @make_xml
+        <dependency>$(sources)
+    ;
+
+actions make_xml
+{
+    echo "make_xml"
+    echo $(1)
+
+    rm -rf temp
+    doxygen $(2)
+    xsltproc temp/combine.xslt temp/index.xml > $(1)
+}
+
+# Produce the reference.qbk file by running
+# the reference xml through the transform.
+#
+make reference.qbk
+    :
+        transform.xsl
+        reference.xml
+    :
+        @make_reference
+    ;
+
+actions make_reference
+{
+    xsltproc $(2) $(3) > $(1)
+}
+
+install qbk : reference.qbk ;
+
+# Produce the Quickbook XML
+#
 xml beast_doc
     :
         qbk/00_main.qbk
+    :
+        <dependency>reference.qbk
     ;
 
 explicit beast_doc ;
 
-install beast_doc_images
+install images
     :
         images/message.png
     :
         <location>html/beast/images
     ;
 
-explicit beast_doc_images ;
+explicit images ;
 
 boostbook beast
     :
@@ -48,7 +117,7 @@ boostbook beast
         <xsl:param>generate.toc="chapter toc,title section nop reference nop"
         <include>../../../tools/boostbook/dtd
     :
-        <dependency>beast_doc_images
+        <dependency>images
     ;
 
 

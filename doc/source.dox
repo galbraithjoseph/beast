@@ -4,8 +4,8 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Beast"
 PROJECT_NUMBER         =
-PROJECT_BRIEF          = C++ Library
-PROJECT_LOGO           = images/beast.png
+PROJECT_BRIEF          = C++ Networking Library
+PROJECT_LOGO           =
 OUTPUT_DIRECTORY       =
 CREATE_SUBDIRS         = NO
 ALLOW_UNICODE_NAMES    = NO
